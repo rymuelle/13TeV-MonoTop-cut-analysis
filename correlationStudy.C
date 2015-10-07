@@ -51,6 +51,7 @@ void getBranches(const std::string doubleVariableNames[], const int nDoubleVaria
         doubleVariables[i] = new double*[nDoubleVariables];
         for(int j = 0; j < nDoubleVariables; j++){
             doubleVariables[i][j] = new double [doubleArraySize[j]];
+            sampleTrees[i]->SetBranchAddress(doubleVariableNames[j].c_str(), &doubleVariables[i][j]);
         }
         
     }
