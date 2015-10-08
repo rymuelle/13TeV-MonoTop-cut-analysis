@@ -23,7 +23,7 @@ void loadRootFiles(const std::string fileName[], int nSamples, TTree *tree[] , i
     }
 }
 
-void makeHistograms(const std::string sampleNames[], const int nSamples,  const std::string doubleVariableNames[],const int nDoubleVariables, const int nBins, const int minValue[], const int maxValue[], TH1F **TH1F_histograms){
+void makeTH1FHistograms(const std::string sampleNames[], const int nSamples,  const std::string doubleVariableNames[],const int nDoubleVariables, const int nBins, const int minValue[], const int maxValue[], TH1F **TH1F_histograms){
 
     for (int i = 0; i < nSamples; i++){
         TH1F_histograms[i] = new TH1F [nDoubleVariables];
@@ -47,21 +47,61 @@ void makeHistograms(const std::string sampleNames[], const int nSamples,  const 
 
 void getBranches(const std::string doubleVariableNames[], const int nDoubleVariables, const int doubleArraySize[], double  ***doubleVariables, TTree *sampleTrees[], const int nSamples){
 
+    double test[3][2][100];
+
     for(int i = 0; i < nSamples; i++){
-        doubleVariables[i] = new double*[nDoubleVariables];
+        doubleVariables[i] = new double*[100];//nDoubleVariables];
         for(int j = 0; j < nDoubleVariables; j++){
-            doubleVariables[i][j] = new double [doubleArraySize[j]];
-            sampleTrees[i]->SetBranchAddress(doubleVariableNames[j].c_str(), &doubleVariables[i][j]);
+            //doubleVariables[i][j] = new double [doubleArraySize[j]];
+            doubleVariables[i][j] = new double [100];
+            sampleTrees[i]->SetBranchAddress(doubleVariableNames[j].c_str(), &*doubleVariables[i][j]);
+            //sampleTrees[i]->SetBranchAddress(doubleVariableNames[j].c_str(), &test[i][j]);
+                for(int k = 0; k < doubleArraySize[j]; k++){
+                   doubleVariables[i][j][k] = i+j+k;
+                    std::cout << i << " " << j << "  " << k << std::endl;
+                    
+               std::cout << doubleVariables[i][j][k] << std::endl;
+                }
         }
         
     }
 
+    double MetPt[410];
 
+    //sampleTrees[0]->SetBranchAddress("MetPt", &doubleVariables[0][1]);
+    //sampleTrees[0]->SetBranchAddress("MetPt", &MetPt);
+
+    sampleTrees[0]->GetEntry(10);
+                //std::cout << MetPt[10] << std::endl;
+    //std::cout << test[0][0][10] << std::endl; 
+    std::cout << doubleVariables[0][0][10] << std::endl; 
+        
 
 }
 
 
-void plotHistograms(){
+void plotTH1FHistograms(TTree *sampleTrees[], const int nSamples, double ***doubleVariables, const int nDoubleVariables, TH1F **TH1F_histograms, int  sampleLength[], const int maxEvents){
+    
+    int numberOfIterations = 0;
+    for(int i = 0; i < nSamples; i++){
+        numberOfIterations = max(numberOfIterations,sampleLength[i]);
+    }
+    numberOfIterations = min(numberOfIterations, maxEvents);
+
+    for(int j = 0; j < numberOfIterations; j++){
+        for(int i = 0; i < 1; i++){
+            if(j < sampleLength[i]){
+                //std::cout << i << " " << j << " " << sampleLength[i] << std::endl;
+                std::cout << sampleTrees[i]->GetEntry(j) << std::endl;
+                for (int k = 0; k < nDoubleVariables; k++){
+                    //TH1F_histograms[i][k].Fill(*doubleVariables[i][j]);
+                   // std::cout << *doubleVariables[j][j] << std::endl; 
+                }
+            }
+                
+        }
+    }
+
 
 }
 
@@ -82,7 +122,7 @@ void correlationStudy(){
 
     const int nBins = 100;
     const int nDoubleVariables = sizeof(doubleVariableNames)/sizeof(doubleVariableNames[0]);
-    
+    const int maxEvents = 5000; 
 
     ///variables
     int sampleLength[nSamples];
@@ -96,11 +136,11 @@ void correlationStudy(){
 
     loadRootFiles(sampleNames, nSamples, sampleTrees, sampleLength);
 
-    makeHistograms(sampleNames, nSamples, doubleVariableNames, nDoubleVariables, nBins, minValue, maxValue,  TH1F_histograms);
+    makeTH1FHistograms(sampleNames, nSamples, doubleVariableNames, nDoubleVariables, nBins, minValue, maxValue,  TH1F_histograms);
 
     getBranches(doubleVariableNames, nDoubleVariables, doubleArraySize, doubleVariables, sampleTrees, nSamples);    
 
-    plotHistograms();
+    //plotTH1FHistograms(sampleTrees, nSamples, doubleVariables,  nDoubleVariables, TH1F_histograms, sampleLength, maxEvents);
 
     drawHistograms();
 
