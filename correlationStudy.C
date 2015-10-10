@@ -3,6 +3,7 @@
 #include <TCanvas.h>
 #include <math.h>
 #include <algorithm>
+#include <vector>
 //#include <TTreeReader.h>
 //#include <TTreeReaderValue.h>
 
@@ -23,27 +24,30 @@ void loadRootFiles(const std::string fileName[], int nSamples, TTree *tree[] , i
     }
 }
 
-void makeTH1FHistograms(const std::string sampleNames[], const int nSamples,  const std::string doubleVariableNames[],const int nDoubleVariables, const int nBins, const int minValue[], const int maxValue[], TH1F **TH1F_histograms){
-
-    for (int i = 0; i < nSamples; i++){
-        TH1F_histograms[i] = new TH1F [nDoubleVariables];
-    }
-
+void makeTH1FHistograms(const std::string sampleNames[], const int nSamples,  const std::string doubleVariableNames[],const int nDoubleVariables, const int nBins, const int minValue[], const int maxValue[], std::vector < std::vector< TH1F* > > TH1F_Vector){
+//void makeTH1FHistograms(const std::string sampleNames[], const int nSamples,  const std::string doubleVariableNames[],const int nDoubleVariables, const int nBins, const int minValue[], const int maxValue[], TH1F *TH1F_histograms[][2]){
+//
+////    for (int i = 0; i < nSamples; i++){
+////        TH1F_histograms[i] = new (TH1F*) [nDoubleVariables];
+////    }
+//
     std::string histName;
     for(int i = 0; i < nSamples; i++){
         for(int j = 0; j < nDoubleVariables; j++){
             histName = "TH1F_" + sampleNames[i] + "_" + doubleVariableNames[j];
             std::cout << histName << std::endl;
-            TH1F_histograms[i][j].SetName(histName.c_str()); //change to pointers with time
-            TH1F_histograms[i][j].SetTitle(histName.c_str());
-            TH1F_histograms[i][j].SetBinsLength(nBins);
-            TH1F_histograms[i][j].SetMinimum(minValue[j]);
-            TH1F_histograms[i][j].SetMaximum(maxValue[j]);
-            std::cout<< maxValue[j] << std::endl;   
+            TH1F_Vector[i].push_back( new TH1F(histName.c_str(),histName.c_str(),nBins, minValue[j], maxValue[j]));                
         }
     } 
 
-    
+    for(int i = 0; i < nSamples; i++){
+            for(int k = 0; k < nDoubleVariables; k++){
+                TH1F_Vector[i][k]->Fill(rand() % 100); //doubleVariables[i][k][doubleArrayIndex[k]]);
+            }
+        }
+
+//
+//    
 }
 
 void getBranches(const std::string doubleVariableNames[], const int nDoubleVariables, const int doubleArraySize[], double  ***doubleVariables, TTree *sampleTrees[], const int nSamples){
@@ -63,7 +67,7 @@ void getBranches(const std::string doubleVariableNames[], const int nDoubleVaria
 }
 
 
-void plotTH1FHistograms(TTree *sampleTrees[], const int nSamples, double ***doubleVariables, const int nDoubleVariables, TH1F **TH1F_histograms, int  sampleLength[], const int maxEvents, const int doubleArrayIndex[]){
+void plotTH1FHistograms(TTree *sampleTrees[], const int nSamples, double ***doubleVariables, const int nDoubleVariables, std::vector < std::vector< TH1F* > > TH1F_Vector, int  sampleLength[], const int maxEvents, const int doubleArrayIndex[]){
     TH1F *test = new TH1F("test", "test", 100, 10, 700);
     TCanvas *cst = new TCanvas("cst", "TH1F histograms", 10, 10, 700, 700);
 
@@ -77,16 +81,17 @@ void plotTH1FHistograms(TTree *sampleTrees[], const int nSamples, double ***doub
         for(int j = 0; j < numberOfIterations; j++){
         sampleTrees[i]->GetEntry(j);
             for(int k = 0; k < nDoubleVariables; k++){
-                TH1F_histograms[i][k].Fill(doubleVariables[i][k][doubleArrayIndex[k]]);
-                test.Fill(doubleVariables[i][k][doubleArrayIndex[k]]);
+                //TH1F_Vector[i][k]->Fill(rand() % 100); //doubleVariables[i][k][doubleArrayIndex[k]]);
+                TH1F_Vector[i][k]->Fill(doubleVariables[i][k][doubleArrayIndex[k]]);
+                test->Fill(doubleVariables[i][k][doubleArrayIndex[k]]);
             }
         }
     }
-    test.Draw();
+    test->Draw();
     cst->SaveAs("test.png");
 }
 
-void drawTH1FHistograms(TH1F **TH1F_histograms,const std::string sampleNames[], const int nSamples, const std::string doubleVariableNames[], const int nDoubleVariables){
+void drawTH1FHistograms(std::vector < std::vector< TH1F* > > TH1F_Vector, const std::string sampleNames[], const int nSamples, const std::string doubleVariableNames[], const int nDoubleVariables){
             std::string fileName;
             TCanvas *cst = new TCanvas("cst", "TH1F histograms", 10, 10, 700, 700);
             cst->SetLogy();
@@ -94,7 +99,7 @@ void drawTH1FHistograms(TH1F **TH1F_histograms,const std::string sampleNames[], 
             for(int i = 0; i < nSamples; i++){
                 for(int j = 0; j < nDoubleVariables; j++){
                     fileName = "TH1F_" + sampleNames[i] + "_" + doubleVariableNames[j] + ".png";
-                    TH1F_histograms[i][j].Draw();
+                    TH1F_Vector[i][j]->Draw();
                     cst->SaveAs(fileName.c_str());  
                 }
             }
@@ -114,7 +119,7 @@ void correlationStudy(){
 
     const int nBins = 100;
     const int nDoubleVariables = sizeof(doubleVariableNames)/sizeof(doubleVariableNames[0]);
-    const int maxEvents = 5000; 
+    const int maxEvents = 10000; 
 
     ///variables
     int sampleLength[nSamples];
@@ -123,18 +128,35 @@ void correlationStudy(){
     //root objects
     TTree *sampleTrees[nSamples];
 
-    TH1F **TH1F_histograms = new TH1F*[nSamples];
+    //TH1F **TH1F_histograms = new TH1F*[nSamples];
+    TH1F *TH1F_histograms[nSamples][nDoubleVariables];
+    std::vector < std::vector< TH1F* > > TH1F_Vector;
+    TH1F_Vector.resize(nSamples);
+    //TH1F_Vector[1].push_back( new TH1F ("bla", "bla", 100, 0, 5) );
+    //TH1F_Vector[1][0]->Draw();
 
+ //   TH1F **ptrTo_TH1F_histograms = TH1F_histograms;
+
+    //TH1F_histograms[0][0] = new TH1F("test","test",100,10, 100);
     
 
     loadRootFiles(sampleNames, nSamples, sampleTrees, sampleLength);
+    std::string histName;
+    for(int i = 0; i < nSamples; i++){
+        for(int j = 0; j < nDoubleVariables; j++){
+            histName = "TH1F_" + sampleNames[i] + "_" + doubleVariableNames[j];
+            std::cout << histName << std::endl;
+            TH1F_Vector[i].push_back( new TH1F(histName.c_str(),histName.c_str(),nBins, minValue[j], maxValue[j]));                
+        }
+    } 
 
-    makeTH1FHistograms(sampleNames, nSamples, doubleVariableNames, nDoubleVariables, nBins, minValue, maxValue,  TH1F_histograms);
+    //makeTH1FHistograms(sampleNames, nSamples, doubleVariableNames, nDoubleVariables, nBins, minValue, maxValue,  TH1F_Vector);
 
+    TH1F_Vector[0][0]->Fill(rand() % 100);
     getBranches(doubleVariableNames, nDoubleVariables, doubleArraySize, doubleVariables, sampleTrees, nSamples);    
 
-    plotTH1FHistograms(sampleTrees, nSamples, doubleVariables,  nDoubleVariables, TH1F_histograms, sampleLength, maxEvents, doubleArrayIndex);
+    plotTH1FHistograms(sampleTrees, nSamples, doubleVariables,  nDoubleVariables, TH1F_Vector, sampleLength, maxEvents, doubleArrayIndex);
 
-    drawTH1FHistograms(TH1F_histograms, sampleNames, nSamples, doubleVariableNames, nDoubleVariables);
+    drawTH1FHistograms(TH1F_Vector, sampleNames, nSamples, doubleVariableNames, nDoubleVariables);
 
 }
